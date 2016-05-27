@@ -1,21 +1,55 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-import os
+
+# Get used to importing this in your Py27 projects!
+from __future__ import print_function, division 
+# Python stdlib
 from collections import namedtuple
-import chimera
+import os
+import contextlib
+# Chimera stuff
 from Rotamers import useBestRotamers
-
-
+from chimera import UserError
+# Own
+import gui
 
 class Controller(object):
 
-    def __init__(self, molecule, path, *args, **kwargs):
-        self.molecule = molecule
-        self.model = Model(path)
-        if self.check():
-            self.set_attributes()
+    results = {}
+    def __init__(self, gui, model, *args, **kwargs):
+        self.gui = gui
+        self.model = model
+        self.set_mvc()
 
+    def set_mvc(self):
+        # Tie model and gui
+        names = ['popfile', 'popsfile']
+        for name in names:
+            with ignored(AttributeError):
+                var = getattr(self.model, '_' + name)
+                var.trace(lambda *args: setattr(self.model, name, var.get()))
+        # Buttons callbacks
+        self.gui.buttonWidgets['Run'].configure(command=self.run)
+
+    def run(self):
+        
+        self.results[self.molecule] = results = self.model.parse()
+        # try:
+        #     self.check()
+        # except ValueError as e:
+        #     raise UserError(str(e))
+        #     return
+        # else:
+        self.set_attributes()
+        dialog = gui.PoPMuSiCResultsDialog(master=self.gui.uiMaster(), molecule=self.molecule)
+        dialog.enter()
+        dialog.fillInData(results)
+
+    @property
+    def molecule(self):
+        return self.gui.molecules.getvalue()
+    
     def check(self):
         """
         Basic tests to assert everything is in order.
@@ -23,10 +57,14 @@ class Controller(object):
         Test 1 - Number of residues in molecule should be the same in PoPMuSiC summary
         Test 2 - Sequence of those residues should be the same in both cases
         """
+        if not self.molecule:
+            raise ValueError("No molecule selected")
+        if not self.model.residues:
+            raise ValueError("PoPMuSiC files have not been loaded")
         if len(self.molecule.residues) != len(self.model.residues):
-            raise ValueError("Number of residues do not match")
+            raise ValueError("Number of residues do not match. Wrong molecule?")
         if any(res.type != row.residue for (res, row) in zip(self.molecule.residues, self.model.residues)):
-            raise ValueError("Sequences do not match")
+            raise ValueError("Sequences do not match. Wrong molecule?")
         return True
 
     def set_attributes(self):
@@ -119,22 +157,38 @@ class Model(object):
 
     """
 
-    def __init__(self, path):
-        self.path = path
-        self.residues = self.load_data()
+    def __init__(self, gui):
+        self.gui = gui
+        self.residues = None
+        
+    def parse(self):
+        pops, pop = self.popsfile, self.popfile
+        if pops and pop:
+            self.residues = list(self.parse_pops_and_pop(self.popsfile, self.popfile))
+            return self.residues
 
-    def keys(self):
-        return self.residues[0]._fields
+    @property
+    def popsfile(self):
+        return self.gui._popsfile.get()
 
-    def load_data(self):
-        files = os.listdir(self.path)
-        pop = next(f for f in files if f.endswith('.pop'))
-        pops = next(f for f in files if f.endswith('.pops'))
-
-        return list(self.parse(os.path.join(self.path, pops), os.path.join(self.path, pop)))
+    @popsfile.setter
+    def popsfile(self, value):
+        if not os.path.isfile(value):
+            raise ValueError('Cannot access file {}'.format(value))
+        self.gui._popsfile.set(value)
+    
+    @property
+    def popfile(self):
+        return self.gui._popfile.get()
+        
+    @popfile.setter
+    def popfile(self, value):
+        if not os.path.isfile(value):
+            raise ValueError('Cannot access file {}'.format(value))
+        self.gui._popfile.set(value)
 
     @staticmethod
-    def parse(pops, pop):
+    def parse_pops_and_pop(pops, pop):
         """
         Load PoPMuSiC data from .pops and .pop file (summary and individual data)
         into a single object representation
@@ -164,7 +218,12 @@ class Model(object):
 ###
 # Helpers
 ###
-
+@contextlib.contextmanager
+def ignored(*exceptions):
+    try:
+        yield
+    except exceptions:
+        pass
 
 def parse_pop(path):
     """
@@ -186,11 +245,12 @@ def iterlines(path):
         for line in f:
             line = line.strip()
             if line and not line.startswith("#"):
+                print(line)
                 yield line
 
 PopTuple = namedtuple('PopMusicPOP', ['chain', 'id', 'residue_wildtype', 'residue_mutated',
                                       'ss', 'sa', 'ddG'])
-NamedResidue = namedtuple("NamedResidue",
-                          ['chain', 'id', 'residue', 'secondary_structure',
-                           'solvent_accesibility', 'ddG', 'negative', 'positive', 'mutations'])
-NamedMutation = namedtuple("NamedMutation", ['solvent_accesibility', 'ddG'])
+NamedResidue = namedtuple("NamedResidue", ['chain', 'id', 'residue_type', 
+                                           'secondary_structure', 'solvent_accessibility', 'ddG', 
+                                           'negative_score', 'positive_score', 'mutations'])
+NamedMutation = namedtuple("NamedMutation", ['solvent_accessibility', 'ddG'])

@@ -1,26 +1,43 @@
 #!/usr/bin/env python
-# encoding: uft-8
+# encoding: utf-8
 
+# get used to importing this in your Py27 projects!
+from __future__ import print_function, division 
 import chimera.extension
 
+"""
+This is the file that Chimera searches for to load new extensions
+at runtime. Normally, you will only need to edit:
 
+- the returned strings in name() and description() methods
+
+- the name of the class in both the class statement and the 
+  registerExtension() call at the end of the file.
+
+"""
+
+# Edit the name 
 class PoPMuSiCExtension(chimera.extension.EMO):
 
     def name(self):
-        return 'PoPMuSiC-GUI'
+        # Always prefix with 'Plume'
+        return 'Plume PoPMuSiC'
 
     def description(self):
-        return "Visual analysis of Dezyme's PoPMuSiC results"
+        # Something short but meaningful
+        return "Design mutant proteins with controlled thermodynamic stability properties"
 
     def categories(self):
+        # Don't touch
         return ['InsiliChem']
 
     def icon(self):
+        # To be implemented
         return
 
     def activate(self):
-        self.module('gui').launch()
+        # Don't edit unless you know what you're doing
+        self.module('gui').showUI()
 
-# Register an instance of 'MainChainEMO' with the Chimera
-# extension manager.
+# Remember to edit the class name in this call!
 chimera.extension.manager.registerExtension(PoPMuSiCExtension(__file__))
