@@ -9,6 +9,7 @@ from tkFileDialog import askopenfilename
 import os
 from operator import itemgetter
 import webbrowser as web
+from Pmw import OptionMenu
 # Chimera stuff
 import chimera
 from chimera.widgets import MoleculeScrolledListBox, SortableTable
@@ -28,6 +29,8 @@ to the opened molecules. That belongs to core.py.
 
 # This is a Chimera thing. Do it, and deal with it.
 ui = None
+
+
 def showUI(callback=None):
     """
     Requested by Chimera way-of-doing-things
@@ -101,7 +104,7 @@ class PoPMuSiCExtension(ModelessDialog):
         self.canvas.pack(expand=True, fill='both')
 
         note_frame = tk.LabelFrame(self.canvas, text='How to run PoPMuSiC')
-        tk.Label(note_frame, text="PoPMuSiC is a web service!\nYou must register " 
+        tk.Label(note_frame, text="PoPMuSiC is a web service!\nYou must register "
                                   "and run the jobs from:").pack(padx=5, pady=5)
         tk.Button(note_frame, text="PoPMuSiC web interface",
                   command=lambda *a: web.open_new(r"http://soft.dezyme.com/"),
@@ -126,7 +129,7 @@ class PoPMuSiCExtension(ModelessDialog):
             button.configure(command=lambda v=stringvar, e=ext: self._browse_cb(v, e))
             button.grid(row=i+1, column=2, padx=3, pady=3)
             setattr(self, var + '_button', button)
-        
+
         note_frame.pack(fill='x', padx=5, pady=5)
         input_frame.pack(expand=True, fill='both', padx=5, pady=5)
 
@@ -151,6 +154,7 @@ class PoPMuSiCExtension(ModelessDialog):
         if os.path.isfile(path):
             var.set(path)
 
+
 class PoPMuSiCResultsDialog(ModelessDialog):
 
     buttons = ('Close')
@@ -162,10 +166,12 @@ class PoPMuSiCResultsDialog(ModelessDialog):
         self.title = 'PropKa results'
         if molecule:
             self.title += ' for {}'.format(molecule.name)
-        
+
         # Private attrs
         self._data = None
-        
+        self._keys = None
+        self._mutations = None
+
         # Fire up
         ModelessDialog.__init__(self, *args, **kwargs)
         if not chimera.nogui:
@@ -183,55 +189,79 @@ class PoPMuSiCResultsDialog(ModelessDialog):
         self.canvas.pack(expand=True, fill='both', padx=5, pady=5)
         self.canvas.columnconfigure(0, weight=1)
 
-        self.table_frame = tk.LabelFrame(master=self.canvas, text='Per-residue information')
-        self.table_menu = tk.OptionMenu
-        self.table = SortableTable(self.table_frame)
+        # Summary
+        self.summary_frame = tk.LabelFrame(master=self.canvas, text='Summary')
+        self.summary_table = SortableTable(self.summary_frame)
 
-        self.actions_frame = tk.LabelFrame(self.canvas, text='Actions')
-        self.actions = [tk.Button(self.actions_frame, text='Color by ddG', command=self.color_by_ddg),
-                        tk.Button(self.actions_frame, text='Color by SASA', command=self.color_by_sasa),
-                        tk.Button(self.actions_frame, text='Reset color', command=self.reset_colors)]
+        self.summary_actions_frame = tk.LabelFrame(self.canvas, text='Actions')
+        self.summary_actions = [tk.Button(self.summary_actions_frame, text='Color by ddG',
+                                          command=self.color_by_ddg, **BUTTON_STYLE),
+                                tk.Button(self.summary_actions_frame, text='Color by SASA',
+                                          command=self.color_by_sasa, **BUTTON_STYLE),
+                                tk.Button(self.summary_actions_frame, text='Reset color',
+                                          command=self.reset_colors, **BUTTON_STYLE)]
 
+        # Mutations
+        self.mutations_frame = tk.LabelFrame(master=self.canvas, text='Mutations')
+        self.mutations_table = SortableTable(self.mutations_frame)
+        self.mutations_menu = OptionMenu(self.mutations_frame, command=self._populate_mutations)
 
+        self.mutations_actions_frame = tk.LabelFrame(self.canvas, text='Actions')
+        self.mutations_actions = [tk.Button(self.mutations_actions_frame, text='Apply suggested mutations',
+                                            command=self.mutate_suggested, **BUTTON_STYLE),
+                                  tk.Button(self.mutations_actions_frame, text='Apply selected mutation(s)',
+                                            command=self.mutate_selected, **BUTTON_STYLE)]
         # Pack and grid
-        self.table_frame.grid(row=0, columnspan=1, sticky='news', padx=5, pady=5)
-        self.table.pack(expand=True, fill='both', padx=5, pady=5)
+        self.summary_frame.grid(row=0, column=0, sticky='news', padx=5, pady=5)
+        self.summary_table.pack(expand=True, fill='both', padx=5, pady=5)
+        self.summary_actions_frame.grid(row=0, column=1, sticky='news', padx=5, pady=5)
+        
+        self.mutations_frame.grid(row=1, column=0, sticky='news', padx=5, pady=5)
+        self.mutations_menu.pack(expand=True, fill='both', padx=5, pady=5)
+        self.mutations_table.pack(expand=True, fill='both', padx=5, pady=5)
+        self.mutations_actions_frame.grid(row=1, column=1, sticky='news', padx=5, pady=5)
 
-        self.actions_frame.grid(row=0, column=1, sticky='news', padx=5, pady=5)
-        for button in self.actions:
+        for button in self.summary_actions + self.mutations_actions:
             button.pack(padx=5, pady=5, fill='x')
+
 
     def fillInData(self, data):
         self._data = data
-        self._populate_table()
+        self._populate()
 
-    def _populate_table(self, data=None):
+    def _populate(self, data=None):
         if data is None:
             data = self._data
 
-        columns = ['#', 'Residue', 'Solvent Accessibility', 'ddG', 'Neg. score', 'Pos. score']
-        for i, column in enumerate(columns):
-            self.table.addColumn(column, itemgetter(i))
-        
-        table_data = []
+        summary, mutations, keys = [], {}, []
         for i, res in enumerate(data):
-            entry = [i+1, ':{}.{} {}'.format(res.id, res.chain, res.residue_type)]
+            entry = [i+1]
+            key = ':{}.{} {}'.format(res.id, res.chain, res.residue_type)
+            entry.append(key)
             entry.append(res.solvent_accessibility)
             entry.extend([res.ddG, res.negative_score, res.positive_score])
-            table_data.append(entry)
-        
-        self.table.setData(table_data)
-        try: 
-            self.table.launch()
-        except tk.TclError: 
-            self.table.refresh(rebuild=True)
+            summary.append(entry)
+            keys.append(key)
+            mutations[key] = res.mutations
+
+        # Summary
+        self._init_summary()
+        self.summary_table.setData(summary)
+        try:
+            self.summary_table.launch()
+        except tk.TclError:
+            self.summary_table.refresh(rebuild=True)
+
+        # Mutations
+        self._init_mutations(keys)
+        self._mutations = mutations
 
     def color_by_ddg(self):
         self.render_by_attr('popmusic_ddG', colormap='Rainbow')
 
     def color_by_sasa(self):
         self.render_by_attr('popmusic_solvent_accessibility', colormap='Rainbow')
-    
+
     def render_by_attr(self, attr, colormap='Blue-Red', histogram_values=None):
         if self._show_attr_dialog is None:
             self._show_attr_dialog = ShowAttrDialog()
@@ -251,3 +281,29 @@ class PoPMuSiCResultsDialog(ModelessDialog):
     def reset_colors(self):
         for r in self.molecule.residues:
             r.ribbonColor = None
+
+    def _init_summary(self):
+        columns = ['#', 'Residue', 'Solvent Accessibility', 'ddG', 'Neg. score', 'Pos. score']
+        for i, column in enumerate(columns):
+            self.summary_table.addColumn(column, itemgetter(i))
+
+    def _init_mutations(self, residues):
+        self.mutations_menu.setitems(['--Choose a residue--'] + residues)
+        self.mutations_table.addColumn('Mutation', itemgetter(0))
+        self.mutations_table.addColumn('Solvent accessibility', itemgetter(1))
+        self.mutations_table.addColumn('ddG', itemgetter(2))
+        self.mutations_table.setData([])
+        self.mutations_table.launch()    
+
+    def _populate_mutations(self, key):
+        if key.startswith('--'):
+            return
+        data = [(r, m[0], m[1]) for r, m in self._mutations[key].items()]
+        self.mutations_table.setData(data)
+        self.mutations_table.refresh(rebuild=True)
+
+    def mutate_suggested(self):
+        pass
+
+    def mutate_selected(self):
+        pass
