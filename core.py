@@ -42,7 +42,8 @@ class Controller(object):
         #     return
         # else:
         self.set_attributes()
-        dialog = gui.PoPMuSiCResultsDialog(master=self.gui.uiMaster(), molecule=self.molecule)
+        dialog = gui.PoPMuSiCResultsDialog(master=self.gui.uiMaster(), molecule=self.molecule,
+                                           controller=self)
         dialog.enter()
         dialog.fillInData(results)
 
@@ -109,17 +110,18 @@ class Controller(object):
         conservative: bool, optional
             Only those with an overall negative ddG will be candidates.
         """
-        candidates = self.residues
+        candidates = self.model.residues
         if conservative:
-            candidates = [r for r in self.model.residues if (r.negative + r.positive) < 0]
+            candidates = [r for r in self.model.residues if (r.negative_score + r.positive_score) < 0]
 
         for c in candidates:
-            new_type, values = min(c.mutations.iteritems(), key=lambda k, v: v.ddG)
+            new_type, values = min(c.mutations.iteritems(), key=lambda kv: kv[1].ddG)
             if values.ddG < 0:
                 residue = self.molecule.findResidue(c.id)
                 self.apply_mutation(residue, new_type)
 
-    def apply_mutation(residue, new_type, criteria='cp'):
+    @staticmethod
+    def apply_mutation(residue, new_type, criteria='chp'):
         """
         Apply requested mutation to residue using the best rotamer according to criteria.
 
@@ -134,7 +136,14 @@ class Controller(object):
             d -> density, h-> H-bonds maximization, c-> clash minimization, p-> probability.
             Allowed combinations would be `dhcp`, `cp`, or even `p`.
         """
-        useBestRotamers(new_type, [residue], criteria=criteria)
+        try:
+            useBestRotamers(new_type, [residue], criteria=criteria)
+        except Exception as e:
+            raise UserError(e)
+        else:
+            for a in residue.atoms:
+                a.display = True
+
 
 
 class Model(object):
