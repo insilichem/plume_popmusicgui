@@ -309,7 +309,7 @@ class PoPMuSiCResultsDialog(ModelessDialog):
         key = selected[1] # Residue info is in 2nd cell
         self._populate_mutations(key)
         # Parse the residue number from key :123.A ASP, where 123 is what we want
-        residue = self.molecule.findResidue(int(key.split('.')[0][1:]))
+        residue = next(r for r in self.molecule.residues if r.id.position == int(key.split('.')[0][1:]))
         if self._previously_selected_residue:
             for a in self._previously_selected_residue.atoms:
                 a.display = False
