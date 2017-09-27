@@ -19,6 +19,7 @@ from ShowAttr import ShowAttrDialog
 # Additional 3rd parties
 
 # Own
+from plumesuite.ui import PlumeBaseDialog
 from core import Controller, Model
 
 """
@@ -47,19 +48,8 @@ def showUI(callback=None):
     if callback:
         ui.addCallback(callback)
 
-ENTRY_STYLE = {
-    'background': 'white',
-    'borderwidth': 1,
-    'highlightthickness': 0,
-    'insertwidth': 1,
-}
-BUTTON_STYLE = {
-    'borderwidth': 1,
-    'highlightthickness': 0,
-}
 
-
-class PoPMuSiCExtension(ModelessDialog):
+class PoPMuSiCExtension(PlumeBaseDialog):
 
     """
     To display a new dialog on the interface, you will normally inherit from
@@ -70,10 +60,8 @@ class PoPMuSiCExtension(ModelessDialog):
     """
 
     buttons = ('Run', 'Close')
-    default = None
-    help = 'https://www.insilichem.com'
 
-    def __init__(self, *args, **kwarg):
+    def __init__(self, *args, **kwargs):
         # GUI init
         self.title = 'Plume PoPMuSiC input'
         self.controller = None
@@ -83,18 +71,9 @@ class PoPMuSiCExtension(ModelessDialog):
         self._popfile = tk.StringVar()
 
         # Fire up
-        ModelessDialog.__init__(self)
-        if not chimera.nogui:  # avoid useless errors during development
-            chimera.extension.manager.registerInstance(self)
+        super(PoPMuSiCExtension, self).__init__(self, *args, **kwargs)
 
-    def _initialPositionCheck(self, *args):
-        try:
-            ModelessDialog._initialPositionCheck(self, *args)
-        except Exception as e:
-            if not chimera.nogui:  # avoid useless errors during development
-                raise e
-
-    def fillInUI(self, parent):
+    def fill_in_ui(self, parent):
         """
         This is the main part of the interface. With this method you code
         the whole dialog, buttons, textareas and everything.
@@ -108,8 +87,7 @@ class PoPMuSiCExtension(ModelessDialog):
         tk.Label(note_frame, text="PoPMuSiC is a web service!\nYou must register "
                                   "and run the jobs from:").pack(padx=5, pady=5)
         tk.Button(note_frame, text="PoPMuSiC web interface",
-                  command=lambda *a: web.open_new(r"http://soft.dezyme.com/"),
-                  **BUTTON_STYLE).pack(padx=5, pady=5)
+                  command=lambda *a: web.open_new(r"http://soft.dezyme.com/")).pack(padx=5, pady=5)
 
         input_frame = tk.LabelFrame(self.canvas, text='Select molecule and PoPMuSiC output files')
         input_frame.rowconfigure(0, weight=1)
@@ -122,11 +100,11 @@ class PoPMuSiCExtension(ModelessDialog):
             tk.Label(input_frame, text=label).grid(row=i+1, column=0, padx=3, pady=3, sticky='e')
             # Field entry
             stringvar = getattr(self, '_' + var)
-            entry = tk.Entry(input_frame, textvariable=stringvar, **ENTRY_STYLE)
+            entry = tk.Entry(input_frame, textvariable=stringvar)
             entry.grid(row=i+1, column=1, padx=3, pady=3, sticky='news')
             setattr(self, var + '_entry', entry)
             # Button
-            button = tk.Button(input_frame, text='...', **BUTTON_STYLE)
+            button = tk.Button(input_frame, text='...')
             button.configure(command=lambda v=stringvar, e=ext: self._browse_cb(v, e))
             button.grid(row=i+1, column=2, padx=3, pady=3)
             setattr(self, var + '_button', button)
@@ -157,9 +135,9 @@ class PoPMuSiCExtension(ModelessDialog):
             var.set(path)
 
 
-class PoPMuSiCResultsDialog(ModelessDialog):
+class PoPMuSiCResultsDialog(PlumeBaseDialog):
 
-    buttons = ('Close')
+    buttons = ('Close',)
     _show_attr_dialog = None
 
     def __init__(self, parent=None, molecule=None, controller=None, *args, **kwargs):
@@ -176,18 +154,9 @@ class PoPMuSiCResultsDialog(ModelessDialog):
         self._mutations = None
         self._previously_selected_residue = None
         # Fire up
-        ModelessDialog.__init__(self, *args, **kwargs)
-        if not chimera.nogui:
-            chimera.extension.manager.registerInstance(self)
+        super(PoPMuSiCResultsDialog, self).__init__(self, *args, **kwargs)
 
-    def _initialPositionCheck(self, *args):
-        try:
-            ModelessDialog._initialPositionCheck(self, *args)
-        except Exception as e:
-            if not chimera.nogui:
-                raise e
-
-    def fillInUI(self, parent):
+    def fill_in_ui(self, parent):
         self.canvas = tk.Frame(parent)
         self.canvas.pack(expand=True, fill='both', padx=5, pady=5)
         self.canvas.columnconfigure(0, weight=1)
@@ -198,11 +167,11 @@ class PoPMuSiCResultsDialog(ModelessDialog):
 
         self.summary_actions_frame = tk.LabelFrame(self.canvas, text='Actions')
         self.summary_actions = [tk.Button(self.summary_actions_frame, text='Color by ddG',
-                                          command=self.color_by_ddg, **BUTTON_STYLE),
+                                          command=self.color_by_ddg),
                                 tk.Button(self.summary_actions_frame, text='Color by SASA',
-                                          command=self.color_by_sasa, **BUTTON_STYLE),
+                                          command=self.color_by_sasa),
                                 tk.Button(self.summary_actions_frame, text='Reset color',
-                                          command=self.reset_colors, **BUTTON_STYLE)]
+                                          command=self.reset_colors)]
 
         # Mutations
         self.mutations_frame = tk.LabelFrame(master=self.canvas, text='Mutations')
@@ -210,9 +179,9 @@ class PoPMuSiCResultsDialog(ModelessDialog):
 
         self.mutations_actions_frame = tk.LabelFrame(self.canvas, text='Actions')
         self.mutations_actions = [tk.Button(self.mutations_actions_frame, text='Apply suggested mutations',
-                                            command=self.mutate_suggested, **BUTTON_STYLE),
+                                            command=self.mutate_suggested),
                                   tk.Button(self.mutations_actions_frame, text='Apply selected mutation',
-                                            command=self.mutate_selected, **BUTTON_STYLE)]
+                                            command=self.mutate_selected)]
         # Pack and grid
         self.summary_frame.grid(row=0, column=0, sticky='news', padx=5, pady=5)
         self.summary_table.pack(expand=True, fill='both', padx=5, pady=5)
