@@ -119,30 +119,28 @@ class PoPMuSiCResultsDialog(PlumeBaseDialog):
         super(PoPMuSiCResultsDialog, self).__init__(self, *args, **kwargs)
 
     def fill_in_ui(self, parent):
-        self.canvas = tk.Frame(parent)
-        self.canvas.pack(expand=True, fill='both', padx=5, pady=5)
         self.canvas.columnconfigure(0, weight=1)
 
         # Summary
         self.ui_summary_frame = tk.LabelFrame(master=self.canvas, text='Summary', width=1000)
-        self.ui_summary_table = SortableTable(self.summary_frame)
+        self.ui_summary_table = SortableTable(self.ui_summary_frame)
 
         self.ui_summary_actions_frame = tk.LabelFrame(self.canvas, text='Actions')
-        self.ui_summary_actions_0 = tk.Button(self.summary_actions_frame, text='Color by ddG',
+        self.ui_summary_actions_0 = tk.Button(self.ui_summary_actions_frame, text='Color by ddG',
                                           command=self.color_by_ddg)
-        self.ui_summary_actions_1 = tk.Button(self.summary_actions_frame, text='Color by SASA',
+        self.ui_summary_actions_1 = tk.Button(self.ui_summary_actions_frame, text='Color by SASA',
                                           command=self.color_by_sasa)
-        self.ui_summary_actions_2 = tk.Button(self.summary_actions_frame, text='Reset color',
+        self.ui_summary_actions_2 = tk.Button(self.ui_summary_actions_frame, text='Reset color',
                                           command=self.reset_colors)
 
         # Mutations
         self.ui_mutations_frame = tk.LabelFrame(master=self.canvas, text='Mutations')
-        self.ui_mutations_table = SortableTable(self.mutations_frame)
+        self.ui_mutations_table = SortableTable(self.ui_mutations_frame)
 
         self.ui_mutations_actions_frame = tk.LabelFrame(self.canvas, text='Actions')
-        self.ui_mutations_actions_0 = tk.Button(self.mutations_actions_frame, text='Apply suggested mutations',
+        self.ui_mutations_actions_0 = tk.Button(self.ui_mutations_actions_frame, text='Apply suggested mutations',
                                             command=self.mutate_suggested)
-        self.ui_mutations_actions_1 = tk.Button(self.mutations_actions_frame, text='Apply selected mutation',
+        self.ui_mutations_actions_1 = tk.Button(self.ui_mutations_actions_frame, text='Apply selected mutation',
                                             command=self.mutate_selected)
         # Pack and grid
         self.ui_summary_frame.grid(row=0, column=0, sticky='news', padx=5, pady=5)
@@ -166,10 +164,10 @@ class PoPMuSiCResultsDialog(PlumeBaseDialog):
 
         # Patch and register the color callbacks before populating the tables
         self._table_monkey_patches()
-        self.mutations_table._callbacks.append(
-            lambda: self.color_table(self.mutations_table, self._color_mutations_table))
-        self.summary_table._callbacks.append(
-            lambda: self.color_table(self.summary_table, self._color_summary_table))
+        self.ui_mutations_table._callbacks.append(
+            lambda: self.color_table(self.ui_mutations_table, self._color_mutations_table))
+        self.ui_summary_table._callbacks.append(
+            lambda: self.color_table(self.ui_summary_table, self._color_summary_table))
         # Go!
         self._populate()
 
@@ -190,13 +188,13 @@ class PoPMuSiCResultsDialog(PlumeBaseDialog):
 
         # Summary
         self._init_summary()
-        self.summary_table.setData(summary)
+        self.ui_summary_table.setData(summary)
         try:
-            self.summary_table.launch(browseCmd=self.on_selection_cb, selectMode='single')
+            self.ui_summary_table.launch(browseCmd=self.on_selection_cb, selectMode='single')
         except tk.TclError:
-            self.summary_table.refresh(rebuild=True)
-        self.canvas.after(100, self.summary_table.requestFullWidth)
-        # self.canvas.after(100, lambda: self.color_table(self.summary_table, self._color_summary_table))
+            self.ui_summary_table.refresh(rebuild=True)
+        self.canvas.after(100, self.ui_summary_table.requestFullWidth)
+        # self.canvas.after(100, lambda: self.color_table(self.ui_summary_table, self._color_summary_table))
 
         # Mutations
         self._init_mutations(keys)
@@ -208,23 +206,23 @@ class PoPMuSiCResultsDialog(PlumeBaseDialog):
             font, anchor, format_ = 'TkTextFont', 'center', '%s'
             if i > 1:
                 font, anchor, format_ = ('Courier', 10), 'e', '%.2f'
-            self.summary_table.addColumn(column, itemgetter(i), font=font, anchor=anchor,
+            self.ui_summary_table.addColumn(column, itemgetter(i), font=font, anchor=anchor,
                                          headerAnchor='center', format=format_)
 
     def _init_mutations(self, residues):
         font, anchor, format_ = ('Courier', 10), 'e', '%.2f'
-        self.mutations_table.addColumn('Mutation', itemgetter(0))
-        self.mutations_table.addColumn('Solvent Accessibility', itemgetter(1), font=font, anchor=anchor,
+        self.ui_mutations_table.addColumn('Mutation', itemgetter(0))
+        self.ui_mutations_table.addColumn('Solvent Accessibility', itemgetter(1), font=font, anchor=anchor,
                                          headerAnchor='center', format=format_)
-        self.mutations_table.addColumn('ddG', itemgetter(2), font=font, anchor=anchor,
+        self.ui_mutations_table.addColumn('ddG', itemgetter(2), font=font, anchor=anchor,
                                          headerAnchor='center', format=format_)
-        self.mutations_table.setData([])
-        self.mutations_table.launch(selectMode="single")    
+        self.ui_mutations_table.setData([])
+        self.ui_mutations_table.launch(selectMode="single")    
 
     def _populate_mutations(self, key):
         data = [(r, m[0], m[1]) for r, m in self._mutations[key].items()]
-        self.mutations_table.setData(data)
-        self.mutations_table.refresh(rebuild=True)
+        self.ui_mutations_table.setData(data)
+        self.ui_mutations_table.refresh(rebuild=True)
 
     @staticmethod
     def _color_summary_table(row):
@@ -282,8 +280,8 @@ class PoPMuSiCResultsDialog(PlumeBaseDialog):
 
     def mutate_selected(self):
         # Get 2nd cell, and parse residue number
-        resnum = int(self.summary_table.selected()[1].split('.')[0][1:])
-        mutation = self.mutations_table.selected()[0]  # Mutation is 1st cell
+        resnum = int(self.ui_summary_table.selected()[1].split('.')[0][1:])
+        mutation = self.ui_mutations_table.selected()[0]  # Mutation is 1st cell
         residue = self.molecule.findResidue(resnum)
         self.controller.apply_mutation(residue, mutation, criteria='chp')
 
@@ -309,16 +307,16 @@ class PoPMuSiCResultsDialog(PlumeBaseDialog):
         Nasty, ugly, and functional :3
         """
         # Backup original refresh methods
-        self.mutations_table._old_refresh = self.mutations_table.refresh
-        self.summary_table._old_refresh = self.summary_table.refresh
+        self.ui_mutations_table._old_refresh = self.ui_mutations_table.refresh
+        self.ui_summary_table._old_refresh = self.ui_summary_table.refresh
         # Create callbacks list in both instances
-        self.mutations_table._callbacks = []
-        self.summary_table._callbacks = []
+        self.ui_mutations_table._callbacks = []
+        self.ui_summary_table._callbacks = []
         def patched_refresh(obj, *args, **kwargs): 
             """ The patched refresh method """
             obj._old_refresh(*args, **kwargs)
             for cb in obj._callbacks:
                 cb()
         # Bound the patched refresh to the instance with `types.MethodType`        
-        self.mutations_table.refresh = types.MethodType(patched_refresh, self.mutations_table)
-        self.summary_table.refresh = types.MethodType(patched_refresh, self.summary_table)
+        self.ui_mutations_table.refresh = types.MethodType(patched_refresh, self.ui_mutations_table)
+        self.ui_summary_table.refresh = types.MethodType(patched_refresh, self.ui_summary_table)

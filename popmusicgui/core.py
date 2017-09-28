@@ -49,7 +49,7 @@ class Controller(object):
 
     @property
     def molecule(self):
-        return self.gui.molecules.getvalue()
+        return self.gui.ui_molecules.getvalue()
     
     def check(self):
         """
