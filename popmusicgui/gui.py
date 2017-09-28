@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 
-# Get used to importing this in your Py27 projects!
+
 from __future__ import print_function, division
 # Python stdlib
 import Tkinter as tk
@@ -22,25 +22,13 @@ from ShowAttr import ShowAttrDialog
 from plumesuite.ui import PlumeBaseDialog
 from core import Controller, Model
 
-"""
-The gui.py module contains the interface code, and only that. 
-It should only 'draw' the window, and should NOT contain any
-business logic like parsing files or applying modifications
-to the opened molecules. That belongs to core.py.
-"""
 
-# This is a Chimera thing. Do it, and deal with it.
 ui = None
-
-
 def showUI(callback=None):
-    """
-    Requested by Chimera way-of-doing-things
-    """
     if chimera.nogui:
         tk.Tk().withdraw()
     global ui
-    if not ui:  # Edit this to reflect the name of the class!
+    if not ui:
         ui = PoPMuSiCExtension()
     model = Model(gui=ui)
     controller = Controller(gui=ui, model=model)
@@ -50,14 +38,6 @@ def showUI(callback=None):
 
 
 class PoPMuSiCExtension(PlumeBaseDialog):
-
-    """
-    To display a new dialog on the interface, you will normally inherit from
-    ModelessDialog class of chimera.baseDialog module. Being modeless means
-    you can have this dialog open while using other parts of the interface.
-    If you don't want this behaviour and instead you want your extension to 
-    claim exclusive usage, use ModalDialog.
-    """
 
     buttons = ('Run', 'Close')
 
@@ -74,26 +54,18 @@ class PoPMuSiCExtension(PlumeBaseDialog):
         super(PoPMuSiCExtension, self).__init__(self, *args, **kwargs)
 
     def fill_in_ui(self, parent):
-        """
-        This is the main part of the interface. With this method you code
-        the whole dialog, buttons, textareas and everything.
-        """
-        # Create main window
-        self.parent = parent
-        self.canvas = tk.Frame(parent)
-        self.canvas.pack(expand=True, fill='both')
-
         note_frame = tk.LabelFrame(self.canvas, text='How to run PoPMuSiC')
         tk.Label(note_frame, text="PoPMuSiC is a web service!\nYou must register "
                                   "and run the jobs from:").pack(padx=5, pady=5)
-        tk.Button(note_frame, text="PoPMuSiC web interface",
-                  command=lambda *a: web.open_new(r"http://soft.dezyme.com/")).pack(padx=5, pady=5)
+        self.ui_web_btn = tk.Button(note_frame, text="PoPMuSiC web interface",
+                  command=lambda *a: web.open_new(r"http://soft.dezyme.com/"))
+        self.ui_web_btn.pack(padx=5, pady=5)
 
         input_frame = tk.LabelFrame(self.canvas, text='Select molecule and PoPMuSiC output files')
         input_frame.rowconfigure(0, weight=1)
         input_frame.columnconfigure(1, weight=1)
-        self.molecules = MoleculeScrolledListBox(input_frame)
-        self.molecules.grid(row=0, columnspan=3, padx=5, pady=5, sticky='news')
+        self.ui_molecules = MoleculeScrolledListBox(input_frame)
+        self.ui_molecules.grid(row=0, columnspan=3, padx=5, pady=5, sticky='news')
         entries = [('popfile', 'POP file', '.pop'), ('popsfile', 'POPS file', '.pops')]
         for i, (var, label, ext) in enumerate(entries):
             # Label
@@ -102,35 +74,26 @@ class PoPMuSiCExtension(PlumeBaseDialog):
             stringvar = getattr(self, '_' + var)
             entry = tk.Entry(input_frame, textvariable=stringvar)
             entry.grid(row=i+1, column=1, padx=3, pady=3, sticky='news')
-            setattr(self, var + '_entry', entry)
+            setattr(self, 'ui_' + var + '_entry', entry)
             # Button
-            button = tk.Button(input_frame, text='...')
-            button.configure(command=lambda v=stringvar, e=ext: self._browse_cb(v, e))
+            button = tk.Button(input_frame, text='...',
+                    command=lambda v=stringvar, e=ext: self._browse_cb(v, e))
             button.grid(row=i+1, column=2, padx=3, pady=3)
-            setattr(self, var + '_button', button)
+            setattr(self, 'ui_' + var + '_button', button)
 
         note_frame.pack(fill='x', padx=5, pady=5)
         input_frame.pack(expand=True, fill='both', padx=5, pady=5)
 
     def Run(self):
-        """
-        Default! Triggered action if you click on an Apply button
-        """
         pass
 
     def Close(self):
-        """
-        Default! Triggered action if you click on the Close button
-        """
         global ui
         ui = None
-        ModelessDialog.Close(self)
-        chimera.extension.manager.deregisterInstance(self)
-        self.destroy()
+        super(PoPMuSiCExtension, self).Close()
 
-    # Below this line, implement all your custom methods for the GUI.
     def _browse_cb(self, var, extension):
-        path = askopenfilename(parent=self.parent)
+        path = askopenfilename()
         if os.path.isfile(path):
             var.set(path)
 
@@ -140,8 +103,7 @@ class PoPMuSiCResultsDialog(PlumeBaseDialog):
     buttons = ('Close',)
     _show_attr_dialog = None
 
-    def __init__(self, parent=None, molecule=None, controller=None, *args, **kwargs):
-        self.parent = parent
+    def __init__(self, molecule=None, controller=None, *args, **kwargs):
         self.molecule = molecule
         self.controller = controller
         self.title = 'PoPMuSiC results'
@@ -162,37 +124,40 @@ class PoPMuSiCResultsDialog(PlumeBaseDialog):
         self.canvas.columnconfigure(0, weight=1)
 
         # Summary
-        self.summary_frame = tk.LabelFrame(master=self.canvas, text='Summary', width=1000)
-        self.summary_table = SortableTable(self.summary_frame)
+        self.ui_summary_frame = tk.LabelFrame(master=self.canvas, text='Summary', width=1000)
+        self.ui_summary_table = SortableTable(self.summary_frame)
 
-        self.summary_actions_frame = tk.LabelFrame(self.canvas, text='Actions')
-        self.summary_actions = [tk.Button(self.summary_actions_frame, text='Color by ddG',
-                                          command=self.color_by_ddg),
-                                tk.Button(self.summary_actions_frame, text='Color by SASA',
-                                          command=self.color_by_sasa),
-                                tk.Button(self.summary_actions_frame, text='Reset color',
-                                          command=self.reset_colors)]
+        self.ui_summary_actions_frame = tk.LabelFrame(self.canvas, text='Actions')
+        self.ui_summary_actions_0 = tk.Button(self.summary_actions_frame, text='Color by ddG',
+                                          command=self.color_by_ddg)
+        self.ui_summary_actions_1 = tk.Button(self.summary_actions_frame, text='Color by SASA',
+                                          command=self.color_by_sasa)
+        self.ui_summary_actions_2 = tk.Button(self.summary_actions_frame, text='Reset color',
+                                          command=self.reset_colors)
 
         # Mutations
-        self.mutations_frame = tk.LabelFrame(master=self.canvas, text='Mutations')
-        self.mutations_table = SortableTable(self.mutations_frame)
+        self.ui_mutations_frame = tk.LabelFrame(master=self.canvas, text='Mutations')
+        self.ui_mutations_table = SortableTable(self.mutations_frame)
 
-        self.mutations_actions_frame = tk.LabelFrame(self.canvas, text='Actions')
-        self.mutations_actions = [tk.Button(self.mutations_actions_frame, text='Apply suggested mutations',
-                                            command=self.mutate_suggested),
-                                  tk.Button(self.mutations_actions_frame, text='Apply selected mutation',
-                                            command=self.mutate_selected)]
+        self.ui_mutations_actions_frame = tk.LabelFrame(self.canvas, text='Actions')
+        self.ui_mutations_actions_0 = tk.Button(self.mutations_actions_frame, text='Apply suggested mutations',
+                                            command=self.mutate_suggested)
+        self.ui_mutations_actions_1 = tk.Button(self.mutations_actions_frame, text='Apply selected mutation',
+                                            command=self.mutate_selected)
         # Pack and grid
-        self.summary_frame.grid(row=0, column=0, sticky='news', padx=5, pady=5)
-        self.summary_table.pack(expand=True, fill='both', padx=5, pady=5)
-        self.summary_actions_frame.grid(row=0, column=1, sticky='news', padx=5, pady=5)
-        
-        self.mutations_frame.grid(row=1, column=0, sticky='news', padx=5, pady=5)
-        self.mutations_table.pack(expand=True, fill='both', padx=5, pady=5)
-        self.mutations_actions_frame.grid(row=1, column=1, sticky='news', padx=5, pady=5)
+        self.ui_summary_frame.grid(row=0, column=0, sticky='news', padx=5, pady=5)
+        self.ui_summary_table.pack(expand=True, fill='both', padx=5, pady=5)
+        self.ui_summary_actions_frame.grid(row=0, column=1, sticky='news', padx=5, pady=5)
+        self.ui_summary_actions_0.pack(padx=5, pady=5, fill='x')
+        self.ui_summary_actions_1.pack(padx=5, pady=5, fill='x')
+        self.ui_summary_actions_2.pack(padx=5, pady=5, fill='x')
 
-        for button in self.summary_actions + self.mutations_actions:
-            button.pack(padx=5, pady=5, fill='x')
+        self.ui_mutations_frame.grid(row=1, column=0, sticky='news', padx=5, pady=5)
+        self.ui_mutations_table.pack(expand=True, fill='both', padx=5, pady=5)
+        self.ui_mutations_actions_frame.grid(row=1, column=1, sticky='news', padx=5, pady=5)
+        self.ui_mutations_actions_0.pack(padx=5, pady=5, fill='x')
+        self.ui_mutations_actions_1.pack(padx=5, pady=5, fill='x')
+
 
     def fillInData(self, data):
         if self._data is not None:
