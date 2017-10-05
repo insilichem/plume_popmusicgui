@@ -51,7 +51,7 @@ class PoPMuSiCExtension(PlumeBaseDialog):
         self._popfile = tk.StringVar()
 
         # Fire up
-        super(PoPMuSiCExtension, self).__init__(self, *args, **kwargs)
+        super(PoPMuSiCExtension, self).__init__(*args, **kwargs)
 
     def fill_in_ui(self, parent):
         note_frame = tk.LabelFrame(self.canvas, text='How to run PoPMuSiC')
@@ -116,7 +116,7 @@ class PoPMuSiCResultsDialog(PlumeBaseDialog):
         self._mutations = None
         self._previously_selected_residue = None
         # Fire up
-        super(PoPMuSiCResultsDialog, self).__init__(self, *args, **kwargs)
+        super(PoPMuSiCResultsDialog, self).__init__(*args, **kwargs)
 
     def fill_in_ui(self, parent):
         self.canvas.columnconfigure(0, weight=1)
