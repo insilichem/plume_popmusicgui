@@ -19,7 +19,7 @@ from ShowAttr import ShowAttrDialog
 # Additional 3rd parties
 
 # Own
-from plumesuite.ui import PlumeBaseDialog
+from libplume.ui import PlumeBaseDialog
 from core import Controller, Model
 
 
