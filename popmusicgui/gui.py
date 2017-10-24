@@ -24,7 +24,7 @@ from core import Controller, Model
 
 
 ui = None
-def showUI(callback=None):
+def showUI():
     if chimera.nogui:
         tk.Tk().withdraw()
     global ui
@@ -33,8 +33,6 @@ def showUI(callback=None):
     model = Model(gui=ui)
     controller = Controller(gui=ui, model=model)
     ui.enter()
-    if callback:
-        ui.addCallback(callback)
 
 
 class PoPMuSiCExtension(PlumeBaseDialog):
@@ -217,7 +215,7 @@ class PoPMuSiCResultsDialog(PlumeBaseDialog):
         self.ui_mutations_table.addColumn('ddG', itemgetter(2), font=font, anchor=anchor,
                                          headerAnchor='center', format=format_)
         self.ui_mutations_table.setData([])
-        self.ui_mutations_table.launch(selectMode="single")    
+        self.ui_mutations_table.launch(selectMode="single")
 
     def _populate_mutations(self, key):
         data = [(r, m[0], m[1]) for r, m in self._mutations[key].items()]
@@ -235,7 +233,7 @@ class PoPMuSiCResultsDialog(PlumeBaseDialog):
     def _color_mutations_table(row):
         ddg = row[-1]
         if ddg < 0:
-            return 'ForestGreen' 
+            return 'ForestGreen'
 
     # Callbacks
     def on_selection_cb(self, selected):
@@ -312,11 +310,11 @@ class PoPMuSiCResultsDialog(PlumeBaseDialog):
         # Create callbacks list in both instances
         self.ui_mutations_table._callbacks = []
         self.ui_summary_table._callbacks = []
-        def patched_refresh(obj, *args, **kwargs): 
+        def patched_refresh(obj, *args, **kwargs):
             """ The patched refresh method """
             obj._old_refresh(*args, **kwargs)
             for cb in obj._callbacks:
                 cb()
-        # Bound the patched refresh to the instance with `types.MethodType`        
+        # Bound the patched refresh to the instance with `types.MethodType`
         self.ui_mutations_table.refresh = types.MethodType(patched_refresh, self.ui_mutations_table)
         self.ui_summary_table.refresh = types.MethodType(patched_refresh, self.ui_summary_table)
