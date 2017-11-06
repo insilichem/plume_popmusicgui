@@ -100,6 +100,10 @@ class PoPMuSiCResultsDialog(PlumeBaseDialog):
 
     buttons = ('Close',)
     _show_attr_dialog = None
+    help = "https://github.com/insilichem/plume_popmusicgui"
+    VERSION = '0.0.1'
+    VERSION_URL = "https://api.github.com/repos/insilichem/plume_popmusicgui/releases/latest"
+
 
     def __init__(self, molecule=None, controller=None, *args, **kwargs):
         self.molecule = molecule
