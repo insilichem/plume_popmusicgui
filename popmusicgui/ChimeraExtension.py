@@ -2,14 +2,14 @@
 # encoding: utf-8
 
 
-from __future__ import print_function, division 
+from __future__ import print_function, division
 import chimera.extension
 
 
 class PoPMuSiCExtension(chimera.extension.EMO):
 
     def name(self):
-        return 'Plume PoPMuSiC'
+        return 'Tangram PoPMuSiC'
 
     def description(self):
         return "Design mutant proteins with controlled thermodynamic stability properties"

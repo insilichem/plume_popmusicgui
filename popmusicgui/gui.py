@@ -19,7 +19,7 @@ from ShowAttr import ShowAttrDialog
 # Additional 3rd parties
 
 # Own
-from libplume.ui import PlumeBaseDialog
+from libtangram.ui import TangramBaseDialog
 from core import Controller, Model
 
 
@@ -35,13 +35,13 @@ def showUI():
     ui.enter()
 
 
-class PoPMuSiCExtension(PlumeBaseDialog):
+class PoPMuSiCExtension(TangramBaseDialog):
 
     buttons = ('Run', 'Close')
 
     def __init__(self, *args, **kwargs):
         # GUI init
-        self.title = 'Plume PoPMuSiC input'
+        self.title = 'Tangram PoPMuSiC input'
         self.controller = None
 
         # Variables
@@ -96,13 +96,13 @@ class PoPMuSiCExtension(PlumeBaseDialog):
             var.set(path)
 
 
-class PoPMuSiCResultsDialog(PlumeBaseDialog):
+class PoPMuSiCResultsDialog(TangramBaseDialog):
 
     buttons = ('Close',)
     _show_attr_dialog = None
-    help = "https://github.com/insilichem/plume_popmusicgui"
+    help = "https://github.com/insilichem/tangram_popmusicgui"
     VERSION = '0.0.1'
-    VERSION_URL = "https://api.github.com/repos/insilichem/plume_popmusicgui/releases/latest"
+    VERSION_URL = "https://api.github.com/repos/insilichem/tangram_popmusicgui/releases/latest"
 
 
     def __init__(self, molecule=None, controller=None, *args, **kwargs):

@@ -1,4 +1,4 @@
-# Plume PoPMuSiC GUI
+# Tangram PoPMuSiC GUI
 
 A UCSF Chimera extension to analyze [PoPMuSiC](http://soft.dezyme.com/) results in a graphical interface.
 
