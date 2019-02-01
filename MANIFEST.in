@@ -1,0 +1,2 @@
+include versioneer.py
+include popmusicgui/_version.py
